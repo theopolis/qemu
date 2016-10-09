@@ -22,26 +22,28 @@
 #include "hw/i2c/aspeed_i2c.h"
 #include "net/net.h"
 
-#define AST2400_UART_5_BASE      0x00184000
-#define AST2400_IOMEM_SIZE       0x00200000
-#define AST2400_IOMEM_BASE       0x1E600000
-#define AST2400_SMC_BASE         AST2400_IOMEM_BASE /* Legacy SMC */
-#define AST2400_FMC_BASE         0X1E620000
-#define AST2400_SPI_BASE         0X1E630000
-#define AST2400_VIC_BASE         0x1E6C0000
-#define AST2400_SDMC_BASE        0x1E6E0000
-#define AST2400_SCU_BASE         0x1E6E2000
-#define AST2400_TIMER_BASE       0x1E782000
-#define AST2400_WDT_BASE         0x1E785000
-#define AST2400_I2C_BASE         0x1E78A000
-#define AST2400_ETH1_BASE        0x1E660000
-#define AST2400_ETH2_BASE        0x1E680000
+#define AST2400_UART_5_BASE     0x00184000
+#define AST2400_IOMEM_SIZE      0x00200000
+#define AST2400_IOMEM_BASE      0x1E600000
+#define AST2400_SMC_BASE        AST2400_IOMEM_BASE /* Legacy SMC */
+#define AST2400_FMC_BASE        0x1E620000
+#define AST2400_SPI_BASE        0x1E630000
+#define AST2400_VIC_BASE        0x1E6C0000
+#define AST2400_SDMC_BASE       0x1E6E0000
+#define AST2400_SCU_BASE        0x1E6E2000
+#define AST2400_TIMER_BASE      0x1E782000
+#define AST2400_WDT_BASE        0x1E785000
+#define AST2400_I2C_BASE        0x1E78A000
+#define AST2400_ETH1_BASE       0x1E660000
+#define AST2400_ETH2_BASE       0x1E680000
 
-#define AST2400_FMC_FLASH_BASE   0x20000000
-#define AST2400_SPI_FLASH_BASE   0x30000000
+#define AST2400_FMC_FLASH_BASE 0x20000000
+#define AST2400_SPI_FLASH_BASE 0x30000000
 
-static const int uart_irqs[] = { 9, 32, 33, 34, 10 };
-static const int timer_irqs[] = { 16, 17, 18, 35, 36, 37, 38, 39, };
+static const int uart_irqs[] = {9, 32, 33, 34, 10};
+static const int timer_irqs[] = {
+    16, 17, 18, 35, 36, 37, 38, 39,
+};
 
 /*
  * IO handlers: simply catch any reads/writes to IO addresses that aren't
@@ -50,16 +52,17 @@ static const int timer_irqs[] = { 16, 17, 18, 35, 36, 37, 38, 39, };
 
 static uint64_t ast2400_io_read(void *p, hwaddr offset, unsigned size)
 {
-    qemu_log_mask(LOG_UNIMP, "%s: 0x%" HWADDR_PRIx " [%u]\n",
-                  __func__, offset, size);
+    qemu_log_mask(LOG_UNIMP, "%s: 0x%" HWADDR_PRIx " [%u]\n", __func__,
+              offset, size);
     return 0;
 }
 
 static void ast2400_io_write(void *opaque, hwaddr offset, uint64_t value,
-                unsigned size)
+                 unsigned size)
 {
-    qemu_log_mask(LOG_UNIMP, "%s: 0x%" HWADDR_PRIx " <- 0x%" PRIx64 " [%u]\n",
-                  __func__, offset, value, size);
+    qemu_log_mask(LOG_UNIMP,
+              "%s: 0x%" HWADDR_PRIx " <- 0x%" PRIx64 " [%u]\n",
+              __func__, offset, value, size);
 }
 
 static const MemoryRegionOps ast2400_io_ops = {
@@ -83,8 +86,10 @@ static void ast2400_init(Object *obj)
     object_property_add_child(obj, "vic", OBJECT(&s->vic), NULL);
     qdev_set_parent_bus(DEVICE(&s->vic), sysbus_get_default());
 
-    object_initialize(&s->timerctrl, sizeof(s->timerctrl), TYPE_ASPEED_TIMER);
-    object_property_add_child(obj, "timerctrl", OBJECT(&s->timerctrl), NULL);
+    object_initialize(&s->timerctrl, sizeof(s->timerctrl),
+              TYPE_ASPEED_TIMER);
+    object_property_add_child(obj, "timerctrl", OBJECT(&s->timerctrl),
+                  NULL);
     qdev_set_parent_bus(DEVICE(&s->timerctrl), sysbus_get_default());
 
     object_initialize(&s->i2c, sizeof(s->i2c), TYPE_ASPEED_I2C);
@@ -95,11 +100,11 @@ static void ast2400_init(Object *obj)
     object_property_add_child(obj, "scu", OBJECT(&s->scu), NULL);
     qdev_set_parent_bus(DEVICE(&s->scu), sysbus_get_default());
     object_property_add_alias(obj, "silicon-rev", OBJECT(&s->scu),
-                              "silicon-rev", &error_abort);
+                  "silicon-rev", &error_abort);
     object_property_add_alias(obj, "hw-strap1", OBJECT(&s->scu),
-                              "hw-strap1", &error_abort);
+                  "hw-strap1", &error_abort);
     object_property_add_alias(obj, "hw-strap2", OBJECT(&s->scu),
-                              "hw-strap2", &error_abort);
+                  "hw-strap2", &error_abort);
 
     object_initialize(&s->smc, sizeof(s->smc), "aspeed.smc.fmc");
     object_property_add_child(obj, "smc", OBJECT(&s->smc), NULL);
@@ -114,7 +119,8 @@ static void ast2400_init(Object *obj)
     qdev_set_parent_bus(DEVICE(&s->sdmc), sysbus_get_default());
 
     object_initialize(&s->ftgmac100, sizeof(s->ftgmac100), TYPE_FTGMAC100);
-    object_property_add_child(obj, "ftgmac100", OBJECT(&s->ftgmac100), NULL);
+    object_property_add_child(obj, "ftgmac100", OBJECT(&s->ftgmac100),
+                  NULL);
     qdev_set_parent_bus(DEVICE(&s->ftgmac100), sysbus_get_default());
 
     object_initialize(&s->wdt, sizeof(s->wdt), TYPE_ASPEED_WDT);
@@ -131,9 +137,9 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
 
     /* IO space */
     memory_region_init_io(&s->iomem, NULL, &ast2400_io_ops, NULL,
-            "ast2400.io", AST2400_IOMEM_SIZE);
-    memory_region_add_subregion_overlap(get_system_memory(), AST2400_IOMEM_BASE,
-            &s->iomem, -1);
+                  "ast2400.io", AST2400_IOMEM_SIZE);
+    memory_region_add_subregion_overlap(get_system_memory(),
+                        AST2400_IOMEM_BASE, &s->iomem, -1);
 
     /* VIC */
     object_property_set_bool(OBJECT(&s->vic), true, "realized", &err);
@@ -143,9 +149,9 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     }
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->vic), 0, AST2400_VIC_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->vic), 0,
-                       qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_IRQ));
+               qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_IRQ));
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->vic), 1,
-                       qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_FIQ));
+               qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_FIQ));
 
     /* Timer */
     object_property_set_bool(OBJECT(&s->timerctrl), true, "realized", &err);
@@ -169,9 +175,10 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
 
     /* UART - attach an 8250 to the IO space as our UART5 */
     if (serial_hds[0]) {
-        qemu_irq uart5 = qdev_get_gpio_in(DEVICE(&s->vic), uart_irqs[4]);
-        serial_mm_init(&s->iomem, AST2400_UART_5_BASE, 2,
-                       uart5, 38400, serial_hds[0], DEVICE_LITTLE_ENDIAN);
+        qemu_irq uart5 =
+            qdev_get_gpio_in(DEVICE(&s->vic), uart_irqs[4]);
+        serial_mm_init(&s->iomem, AST2400_UART_5_BASE, 2, uart5, 38400,
+                   serial_hds[0], DEVICE_LITTLE_ENDIAN);
     }
 
     /* I2C */
@@ -182,11 +189,11 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     }
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->i2c), 0, AST2400_I2C_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->i2c), 0,
-                       qdev_get_gpio_in(DEVICE(&s->vic), 12));
+               qdev_get_gpio_in(DEVICE(&s->vic), 12));
 
     /* add a TMP423 temperature sensor */
-    dev = i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&s->i2c), 2),
-                           "tmp423", 0x4c);
+    dev = i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&s->i2c), 2), "tmp423",
+                   0x4c);
     object_property_set_int(OBJECT(dev), 31000, "temperature0", &err);
     object_property_set_int(OBJECT(dev), 28000, "temperature1", &err);
     object_property_set_int(OBJECT(dev), 20000, "temperature2", &err);
@@ -194,10 +201,11 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
 
     /* The palmetto platform expects a ds3231 RTC but a ds1338 is
      * enough to provide basic RTC features. Alarms will be missing */
-    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&s->i2c), 0), "ds1338", 0x68);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&s->i2c), 0), "ds1338",
+             0x68);
 
     /* SMC */
-    object_property_set_int(OBJECT(&s->smc), 1, "num-cs", &err);
+    object_property_set_int(OBJECT(&s->smc), 3, "num-cs", &err);
     object_property_set_bool(OBJECT(&s->smc), true, "realized", &local_err);
     error_propagate(&err, local_err);
     if (err) {
@@ -207,7 +215,7 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->smc), 0, AST2400_FMC_BASE);
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->smc), 1, AST2400_FMC_FLASH_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->smc), 0,
-                       qdev_get_gpio_in(DEVICE(&s->vic), 19));
+               qdev_get_gpio_in(DEVICE(&s->vic), 19));
 
     /* SPI */
     object_property_set_int(OBJECT(&s->spi), 1, "num-cs", &err);
@@ -221,15 +229,17 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->spi), 1, AST2400_SPI_FLASH_BASE);
 
     /* SDMC - SDRAM Memory Controller */
-    silicon_rev = (uint32_t)
-        object_property_get_int(OBJECT(&s->scu), "silicon-rev", &err);
+    silicon_rev = (uint32_t)object_property_get_int(OBJECT(&s->scu),
+                            "silicon-rev", &err);
     if (err) {
         error_propagate(errp, err);
         return;
     }
 
-    object_property_set_int(OBJECT(&s->sdmc), silicon_rev, "silicon-rev", &err);
-    object_property_set_bool(OBJECT(&s->sdmc), true, "realized", &local_err);
+    object_property_set_int(OBJECT(&s->sdmc), silicon_rev, "silicon-rev",
+                &err);
+    object_property_set_bool(OBJECT(&s->sdmc), true, "realized",
+                 &local_err);
     error_propagate(&err, local_err);
     if (err) {
         error_propagate(errp, err);
@@ -241,7 +251,7 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     qdev_set_nic_properties(DEVICE(&s->ftgmac100), &nd_table[0]);
     object_property_set_bool(OBJECT(&s->ftgmac100), true, "aspeed", &err);
     object_property_set_bool(OBJECT(&s->ftgmac100), true, "realized",
-                             &local_err);
+                 &local_err);
     error_propagate(&err, local_err);
     if (err) {
         error_propagate(errp, err);
@@ -249,7 +259,7 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
     }
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->ftgmac100), 0, AST2400_ETH1_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->ftgmac100), 0,
-                       qdev_get_gpio_in(DEVICE(&s->vic), 2));
+               qdev_get_gpio_in(DEVICE(&s->vic), 2));
 
     /* Watch dog */
     object_property_set_bool(OBJECT(&s->wdt), true, "realized", &err);
@@ -258,7 +268,6 @@ static void ast2400_realize(DeviceState *dev, Error **errp)
         return;
     }
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->wdt), 0, AST2400_WDT_BASE);
-
 }
 
 static void ast2400_class_init(ObjectClass *oc, void *data)

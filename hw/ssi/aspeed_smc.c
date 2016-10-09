@@ -140,9 +140,7 @@ static const AspeedSegments aspeed_segments_legacy[] = {
 };
 
 static const AspeedSegments aspeed_segments_fmc[] = {
-    { 0x20000000, 64 * 1024 * 1024 },
-    { 0x24000000, 32 * 1024 * 1024 },
-    { 0x26000000, 32 * 1024 * 1024 },
+    { 0x20000000, 128 * 1024 * 1024 },
     { 0x28000000, 32 * 1024 * 1024 },
     { 0x2A000000, 32 * 1024 * 1024 }
 };

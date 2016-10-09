@@ -29,6 +29,7 @@ static struct arm_boot_info aspeed_binfo = {
 typedef struct AspeedBoardState {
     AST2400State soc;
     MemoryRegion ram;
+    MemoryRegion sdram;
 } AspeedBoardState;
 
 static bool aspeed_has_flash0;
@@ -39,22 +40,31 @@ typedef struct AspeedBoardConfig {
     hwaddr sdram_base;
 } AspeedBoardConfig;
 
-enum {
-    PALMETTO_BMC,
-    AST2500_EDK
-};
+enum { PALMETTO_BMC, AST2500_EDK };
+
+/*
+#define AST2500_EVB_HW_STRAP1 ((                                        \
+        AST2500_HW_STRAP1_DEFAULTS |                                    \
+        SCU_AST2500_HW_STRAP_SPI_AUTOFETCH_ENABLE |                     \
+        SCU_AST2500_HW_STRAP_GPIO_STRAP_ENABLE |                        \
+        SCU_AST2500_HW_STRAP_UART_DEBUG |                               \
+        SCU_AST2500_HW_STRAP_DDR4_ENABLE |                              \
+        SCU_HW_STRAP_MAC1_RGMII |                                       \
+        SCU_HW_STRAP_MAC0_RGMII) &                                      \
+        ~SCU_HW_STRAP_2ND_BOOT_WDT)
+*/
 
 static const AspeedBoardConfig aspeed_boards[] = {
-    [ PALMETTO_BMC ] = { AST2400_HW_STRAP1, AST2400_A0_SILICON_REV,
-                         AST2400_SDRAM_BASE },
-    [ AST2500_EDK ]  = { 0x00000200, AST2500_A1_SILICON_REV,
-                         AST2500_SDRAM_BASE },
+    [PALMETTO_BMC] = {AST2400_HW_STRAP1, AST2400_A0_SILICON_REV,
+              AST2400_SDRAM_BASE},
+    [AST2500_EDK] = {0xF100C2E6, AST2500_A1_SILICON_REV,
+             AST2500_SDRAM_BASE},
 };
 
 static void aspeed_init_flashes(AspeedSMCState *s, const char *flashtype,
-                                Error **errp)
+                Error **errp)
 {
-    int i ;
+    int i;
 
     for (i = 0; i < s->num_cs; ++i) {
         AspeedSMCFlash *fl = &s->flashes[i];
@@ -67,8 +77,8 @@ static void aspeed_init_flashes(AspeedSMCState *s, const char *flashtype,
          */
         fl->flash = ssi_create_slave_no_init(s->spi, flashtype);
         if (dinfo) {
-            qdev_prop_set_drive(fl->flash, "drive", blk_by_legacy_dinfo(dinfo),
-                                errp);
+            qdev_prop_set_drive(fl->flash, "drive",
+                        blk_by_legacy_dinfo(dinfo), errp);
             aspeed_has_flash0 = true;
         }
         m25p80_set_rom_storage(fl->flash, &fl->mmio);
@@ -86,25 +96,35 @@ static void aspeed_init(MachineState *machine, int board_model)
     bmc = g_new0(AspeedBoardState, 1);
     object_initialize(&bmc->soc, (sizeof(bmc->soc)), TYPE_AST2400);
     object_property_add_child(OBJECT(machine), "soc", OBJECT(&bmc->soc),
-                              &error_abort);
+                  &error_abort);
 
+    /* Create RAM region */
     memory_region_allocate_system_memory(&bmc->ram, NULL, "ram", ram_size);
     memory_region_add_subregion(get_system_memory(),
-                                aspeed_boards[board_model].sdram_base,
-                                &bmc->ram);
-    object_property_add_const_link(OBJECT(&bmc->soc), "ram", OBJECT(&bmc->ram),
-                                   &error_abort);
+                    aspeed_boards[board_model].sdram_base,
+                    &bmc->ram);
+    object_property_add_const_link(OBJECT(&bmc->soc), "ram",
+                       OBJECT(&bmc->ram), &error_abort);
+
+    /* Create SDRAM region */
+    memory_region_allocate_system_memory(&bmc->sdram, NULL, "aspeed.sdram",
+                         0x8000);
+    memory_region_add_subregion(get_system_memory(), 0x1E720000,
+                    &bmc->sdram);
+    object_property_add_const_link(OBJECT(&bmc->soc), "aspeed.sdram",
+                       OBJECT(&bmc->sdram), &error_abort);
+
     object_property_set_int(OBJECT(&bmc->soc),
-                            aspeed_boards[board_model].hw_strap1,
-                            "hw-strap1", &error_abort);
+                aspeed_boards[board_model].hw_strap1,
+                "hw-strap1", &error_abort);
     object_property_set_int(OBJECT(&bmc->soc),
-                            aspeed_boards[board_model].silicon_rev,
-                            "silicon-rev", &error_abort);
+                aspeed_boards[board_model].silicon_rev,
+                "silicon-rev", &error_abort);
     object_property_set_bool(OBJECT(&bmc->soc), true, "realized",
-                             &error_abort);
+                 &error_abort);
 
     aspeed_init_flashes(&bmc->soc.smc, "n25q256a", &error_abort);
-    aspeed_init_flashes(&bmc->soc.spi, "mx25l25635f", &error_abort);
+    // aspeed_init_flashes(&bmc->soc.spi, "n25q256a", &error_abort);
 
     /*
      * Install first SMC/FMC flash content as a rom.
@@ -114,9 +134,10 @@ static void aspeed_init(MachineState *machine, int board_model)
         MemoryRegion *flash0alias = g_new(MemoryRegion, 1);
 
         memory_region_init_alias(flash0alias, OBJECT(&bmc->soc.smc),
-                                 "flash0alias", &flash0->mmio, 0,
-                                 flash0->size);
-        memory_region_add_subregion(get_system_memory(), 0, flash0alias);
+                     "flash0alias", &flash0->mmio, 0,
+                     flash0->size);
+        memory_region_add_subregion(get_system_memory(), 0,
+                        flash0alias);
     }
 
     aspeed_binfo.kernel_filename = machine->kernel_filename;
