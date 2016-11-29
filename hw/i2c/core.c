@@ -154,6 +154,10 @@ int i2c_start_transfer(I2CBus *bus, uint8_t address, int recv)
 
         if (sc->event) {
             rv = sc->event(node->elt, recv ? I2C_START_RECV : I2C_START_SEND);
+            if (node->elt->busy) {
+                return 1;
+            }
+
             if (rv && !bus->broadcast) {
                 if (bus_scanned) {
                     /* First call, terminate the transfer. */
