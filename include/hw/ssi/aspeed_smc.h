@@ -53,6 +53,7 @@ typedef struct AspeedSMCFlash {
 
     uint8_t id;
     uint32_t size;
+    uint8_t cmd;
 
     MemoryRegion mmio;
     DeviceState *flash;

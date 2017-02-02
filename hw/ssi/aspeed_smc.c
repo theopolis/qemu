@@ -143,6 +143,7 @@
 
 /* Flash opcodes. */
 #define SPI_OP_READ       0x03    /* Read data bytes (low frequency) */
+#define SPI_OP_READ_FAST  0x0b    /* Read data bytes (high frequency) */
 
 /*
  * Default segments mapping addresses and size for each slave per
@@ -524,6 +525,17 @@ static uint64_t aspeed_smc_flash_read(void *opaque, hwaddr addr, unsigned size)
 
     switch (aspeed_smc_flash_mode(fl)) {
     case CTRL_USERMODE:
+        /* Handle dummies in case of fast read. The driver should
+         * already write one dummy byte but as the m25p80 expects
+         * eight, write the seven missing ... This is hacky !!!
+         */
+        if (fl->cmd == SPI_OP_READ_FAST) {
+            for (i = 0; i < 7; i++) {
+                ssi_transfer(fl->controller->spi, 0xFF);
+            }
+            fl->cmd = 0xFF;
+        }
+
         for (i = 0; i < size; i++) {
             ret |= ssi_transfer(s->spi, 0x0) << (8 * i);
         }
@@ -574,6 +586,15 @@ static void aspeed_smc_flash_write(void *opaque, hwaddr addr, uint64_t data,
 
     switch (aspeed_smc_flash_mode(fl)) {
     case CTRL_USERMODE:
+        /*
+         * First write after chip select is the chip command. Remember
+         * it as we might need to send dummy bytes before reading
+         * data. It will be reseted when the chip is unselected.
+         */
+        if (!fl->cmd) {
+            fl->cmd = data & 0xff;
+        }
+
         for (i = 0; i < size; i++) {
             ssi_transfer(s->spi, (data >> (8 * i)) & 0xff);
         }
@@ -608,6 +629,7 @@ static void aspeed_smc_flash_update_cs(AspeedSMCFlash *fl)
 {
     const AspeedSMCState *s = fl->controller;
 
+    fl->cmd = 0;
     qemu_set_irq(s->cs_lines[fl->id], aspeed_smc_is_ce_stop_active(fl));
 }
 
