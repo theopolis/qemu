@@ -46,6 +46,9 @@ typedef struct Ftgmac100State {
     uint32_t phy_int;
     uint32_t phy_int_mask;
 
+    bool aspeed;
+    uint32_t txdes0_edotr;
+    uint32_t rxdes0_edorr;
 } Ftgmac100State;
 
 #endif

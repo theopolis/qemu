@@ -112,6 +112,7 @@ struct ftgmac100_txdes {
 #define FTGMAC100_TXDES0_CRC_ERR         (1 << 19)
 #define FTGMAC100_TXDES0_LTS             (1 << 28)
 #define FTGMAC100_TXDES0_FTS             (1 << 29)
+#define FTGMAC100_TXDES0_EDOTR_ASPEED    (1 << 30)
 #define FTGMAC100_TXDES0_TXDMA_OWN       (1 << 31)
 
 #define FTGMAC100_TXDES1_VLANTAG_CI(x)   ((x) & 0xffff)
@@ -147,6 +148,7 @@ struct ftgmac100_rxdes {
 #define FTGMAC100_RXDES0_PAUSE_FRAME     (1 << 25)
 #define FTGMAC100_RXDES0_LRS             (1 << 28)
 #define FTGMAC100_RXDES0_FRS             (1 << 29)
+#define FTGMAC100_RXDES0_EDORR_ASPEED    (1 << 30)
 #define FTGMAC100_RXDES0_RXPKT_RDY       (1 << 31)
 
 #define FTGMAC100_RXDES1_VLANTAG_CI      0xffff
@@ -373,7 +375,7 @@ static uint32_t ftgmac100_find_txdes(Ftgmac100State *s, uint32_t addr)
 
     while (1) {
         ftgmac100_read_bd(&bd, addr);
-        if (bd.des0 & (FTGMAC100_TXDES0_FTS | FTGMAC100_TXDES0_EDOTR)) {
+        if (bd.des0 & (FTGMAC100_TXDES0_FTS | s->txdes0_edotr)) {
             break;
         }
         addr += sizeof(Ftgmac100Desc);
@@ -427,7 +429,7 @@ static void ftgmac100_do_tx(Ftgmac100State *s)
         /* Write back the modified descriptor.  */
         ftgmac100_write_bd(&bd, addr);
         /* Advance to the next descriptor.  */
-        if (bd.des0 & FTGMAC100_TXDES0_EDOTR) {
+        if (bd.des0 & s->txdes0_edotr) {
             addr = s->tx_ring;
         } else {
             addr += sizeof(Ftgmac100Desc);
@@ -448,7 +450,7 @@ static void ftgmac100_enable_rx(Ftgmac100State *s)
     while (1) {
         ftgmac100_read_bd(&bd, s->rx_descriptor);
         full = (bd.des0 & FTGMAC100_RXDES0_RXPKT_RDY);
-        if (!full || bd.des0 & FTGMAC100_TXDES0_EDOTR) {
+        if (!full || bd.des0 & s->txdes0_edotr) {
             break;
         }
         s->rx_descriptor += sizeof(Ftgmac100Desc);
@@ -739,7 +741,7 @@ static ssize_t ftgmac100_receive(NetClientState *nc, const uint8_t *buf,
             s->isr |= FTGMAC100_INT_RPKT_FIFO;
         }
         ftgmac100_write_bd(&bd, addr);
-        if (bd.des0 & FTGMAC100_RXDES0_EDORR) {
+        if (bd.des0 & s->rxdes0_edorr) {
             addr = s->rx_ring;
         } else {
             addr += sizeof(Ftgmac100Desc);
@@ -780,6 +782,14 @@ static void ftgmac100_realize(DeviceState *dev, Error **errp)
 {
     Ftgmac100State *s = FTGMAC100(dev);
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+
+    if (s->aspeed) {
+        s->txdes0_edotr = FTGMAC100_TXDES0_EDOTR_ASPEED;
+        s->rxdes0_edorr = FTGMAC100_RXDES0_EDORR_ASPEED;
+    } else {
+        s->txdes0_edotr = FTGMAC100_TXDES0_EDOTR;
+        s->rxdes0_edorr = FTGMAC100_RXDES0_EDORR;
+    }
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &ftgmac100_ops, s,
                           TYPE_FTGMAC100, 0x2000);
@@ -824,6 +834,7 @@ static const VMStateDescription vmstate_ftgmac100 = {
 };
 
 static Property ftgmac100_properties[] = {
+    DEFINE_PROP_BOOL("aspeed", Ftgmac100State, aspeed, false),
     DEFINE_NIC_PROPERTIES(Ftgmac100State, conf),
     DEFINE_PROP_END_OF_LIST(),
 };
