@@ -266,6 +266,14 @@ static void aspeed_soc_realize(DeviceState *dev, Error **errp)
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->i2c), 0,
                        qdev_get_gpio_in(DEVICE(&s->vic), 12));
 
+    /* add a TMP423 temperature sensor */
+    dev = i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&s->i2c), 2),
+                           "tmp423", 0x4c);
+    object_property_set_int(OBJECT(dev), 31000, "temperature0", &err);
+    object_property_set_int(OBJECT(dev), 28000, "temperature1", &err);
+    object_property_set_int(OBJECT(dev), 20000, "temperature2", &err);
+    object_property_set_int(OBJECT(dev), 110000, "temperature3", &err);
+
     /* FMC, The number of CS is set at the board level */
     object_property_set_int(OBJECT(&s->fmc), sc->info->sdram_base, "sdram-base",
                             &err);
