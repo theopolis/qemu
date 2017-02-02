@@ -9,10 +9,12 @@
 
 #include "qemu/osdep.h"
 #include "qemu/log.h"
+#include "qapi/error.h"
 #include "sysemu/watchdog.h"
 #include "hw/sysbus.h"
 #include "qemu/timer.h"
 #include "hw/watchdog/wdt_aspeed.h"
+#include "hw/misc/aspeed_scu.h"
 
 #define WDT_STATUS              (0x00 / 4)
 #define WDT_RELOAD_VALUE        (0x04 / 4)
@@ -180,19 +182,24 @@ static void aspeed_wdt_timer_expired(void *dev)
     timer_del(s->timer);
 }
 
-#define PCLK_HZ 24000000
-
 static void aspeed_wdt_realize(DeviceState *dev, Error **errp)
 {
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     AspeedWDTState *s = ASPEED_WDT(dev);
+    Object *obj;
+    Error *err = NULL;
 
     s->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, aspeed_wdt_timer_expired, dev);
 
-    /* FIXME: This setting should be derived from the SCU hw strapping
-     * register SCU70
-     */
-    s->pclk_freq = PCLK_HZ;
+    obj = object_property_get_link(OBJECT(dev), "scu", &err);
+    if (!obj) {
+        error_setg(errp, "%s: required link 'scu' not found: %s",
+                   __func__, error_get_pretty(err));
+        return;
+    }
+
+    s->pclk_freq = aspeed_scu_get_clk(ASPEED_SCU(obj));
+
 
     memory_region_init_io(&s->iomem, OBJECT(s), &aspeed_wdt_ops, s,
                           TYPE_ASPEED_WDT, ASPEED_WDT_REGS_MAX * 4);
