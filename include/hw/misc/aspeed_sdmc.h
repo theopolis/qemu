@@ -28,6 +28,7 @@ typedef struct AspeedSDMCState {
     uint32_t ram_bits;
     uint64_t ram_size;
 
+    bool unlocked;
 } AspeedSDMCState;
 
 #endif /* ASPEED_SDMC_H */

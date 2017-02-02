@@ -83,17 +83,22 @@
 static uint64_t aspeed_sdmc_read(void *opaque, hwaddr addr, unsigned size)
 {
     AspeedSDMCState *s = ASPEED_SDMC(opaque);
+    uint64_t val = 0;
 
     addr >>= 2;
 
-    if (addr >= ARRAY_SIZE(s->regs)) {
+    switch (addr) {
+    case R_PROT:
+        val = s->unlocked;
+        break;
+    default:
         qemu_log_mask(LOG_GUEST_ERROR,
                       "%s: Out-of-bounds read at offset 0x%" HWADDR_PRIx "\n",
                       __func__, addr);
-        return 0;
+        break;
     }
 
-    return s->regs[addr];
+    return val;
 }
 
 static void aspeed_sdmc_write(void *opaque, hwaddr addr, uint64_t data,
@@ -103,19 +108,18 @@ static void aspeed_sdmc_write(void *opaque, hwaddr addr, uint64_t data,
 
     addr >>= 2;
 
-    if (addr >= ARRAY_SIZE(s->regs)) {
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "%s: Out-of-bounds write at offset 0x%" HWADDR_PRIx "\n",
-                      __func__, addr);
+    if (addr == R_PROT) {
+        s->unlocked = (data == PROT_KEY_UNLOCK);
         return;
     }
 
-    if (addr != R_PROT && s->regs[R_PROT] != PROT_KEY_UNLOCK) {
+    if (!s->unlocked) { /* TODO protect : MCR04 ∼ MCR7C */
         qemu_log_mask(LOG_GUEST_ERROR, "%s: SDMC is locked!\n", __func__);
         return;
     }
 
-    if (addr == R_CONF) {
+    switch (addr) {
+    case R_CONF:
         /* Make sure readonly bits are kept */
         switch (s->silicon_rev) {
         case AST2400_A0_SILICON_REV:
@@ -128,6 +132,12 @@ static void aspeed_sdmc_write(void *opaque, hwaddr addr, uint64_t data,
         default:
             g_assert_not_reached();
         }
+        break;
+    default:
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "%s: Out-of-bounds write at offset 0x%" HWADDR_PRIx "\n",
+                      __func__, addr << 2);
+        return;
     }
 
     s->regs[addr] = data;
