@@ -37,6 +37,7 @@ typedef struct AspeedSCUState {
 #define AST2500_A1_SILICON_REV   0x04010303U
 
 extern bool is_supported_silicon_rev(uint32_t silicon_rev);
+extern uint32_t aspeed_scu_get_clk(AspeedSCUState *scu);
 
 /*
  * Extracted from Aspeed SDK v00.03.21. Fixes and extra definitions

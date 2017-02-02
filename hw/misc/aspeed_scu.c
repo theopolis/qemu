@@ -268,6 +268,18 @@ bool is_supported_silicon_rev(uint32_t silicon_rev)
     return false;
 }
 
+#define ASPEED_PLL_25MHZ    25000000
+#define ASPEED_PLL_24MHZ    24000000
+#define ASPEED_PLL_12MHZ    12000000
+
+uint32_t aspeed_scu_get_clk(AspeedSCUState *scu)
+{
+    if (scu->hw_strap1 & AST2400_CLK_25M_IN)
+        return ASPEED_PLL_25MHZ;
+    else
+        return ASPEED_PLL_24MHZ;
+}
+
 static void aspeed_scu_realize(DeviceState *dev, Error **errp)
 {
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
