@@ -95,7 +95,7 @@ static const AspeedBoardConfig aspeed_boards[] = {
         .hw_strap1 = AST2500_EVB_HW_STRAP1,
         .fmc_model = "n25q256a",
         .spi_model = "mx25l25635e",
-        .num_cs    = 1,
+        .num_cs    = 2,
     },
     [ROMULUS_BMC]  = {
         .soc_name  = "ast2500-a1",
@@ -166,6 +166,7 @@ static void aspeed_board_init(MachineState *machine,
     AspeedBoardState *bmc;
     AspeedSoCClass *sc;
     DriveInfo *drive0 = drive_get(IF_MTD, 0, 0);
+    DriveInfo *drive1 = drive_get(IF_MTD, 0, 1);
 
     bmc = g_new0(AspeedBoardState, 1);
     object_initialize(&bmc->soc, (sizeof(bmc->soc)), cfg->soc_name);
@@ -215,6 +216,24 @@ static void aspeed_board_init(MachineState *machine,
         memory_region_add_subregion(get_system_memory(), FIRMWARE_ADDR,
                                     boot_rom);
         write_boot_rom(drive0, FIRMWARE_ADDR, fl->size, &error_abort);
+
+        MemoryRegion *fake_fmc_cs0 = g_new(MemoryRegion, 1);
+        memory_region_init_rom(fake_fmc_cs0, OBJECT(bmc), "aspeed.fake_fmc_cs0",
+                               fl->size, &error_abort);
+        memory_region_add_subregion(get_system_memory(), 0x20000000,
+                                    fake_fmc_cs0);
+        write_boot_rom(drive0, 0x20000000, fl->size, &error_abort);
+    }
+
+    if (drive1) {
+        AspeedSMCFlash *fl = &bmc->soc.fmc.flashes[0];
+
+        MemoryRegion *fake_fmc_cs1 = g_new(MemoryRegion, 1);
+        memory_region_init_rom(fake_fmc_cs1, OBJECT(bmc), "aspeed.fake_fmc_cs1",
+                               fl->size, &error_abort);
+        memory_region_add_subregion(get_system_memory(), 0x28000000,
+                                    fake_fmc_cs1);
+        write_boot_rom(drive1, 0x28000000, fl->size, &error_abort);
     }
 
     aspeed_board_binfo.kernel_filename = machine->kernel_filename;
@@ -269,7 +288,7 @@ static void ast2500_evb_class_init(ObjectClass *oc, void *data)
 }
 
 static const TypeInfo ast2500_evb_type = {
-    .name = MACHINE_TYPE_NAME("ast2500-evb"),
+    .name = MACHINE_TYPE_NAME("ast2500-edk"),
     .parent = TYPE_MACHINE,
     .class_init = ast2500_evb_class_init,
 };

@@ -139,7 +139,7 @@
 #define ASPEED_SMC_R_SMC_MAX (0x20 / 4)
 
 #define ASPEED_SOC_SMC_FLASH_BASE   0x10000000
-#define ASPEED_SOC_FMC_FLASH_BASE   0x20000000
+#define ASPEED_SOC_FMC_FLASH_BASE   0x40000000
 #define ASPEED_SOC_SPI_FLASH_BASE   0x30000000
 #define ASPEED_SOC_SPI2_FLASH_BASE  0x38000000
 
@@ -177,9 +177,9 @@ static const AspeedSegments aspeed_segments_spi[] = {
 };
 
 static const AspeedSegments aspeed_segments_ast2500_fmc[] = {
-    { 0x20000000, 128 * 1024 * 1024 }, /* start address is readonly */
-    { 0x28000000,  32 * 1024 * 1024 },
-    { 0x2A000000,  32 * 1024 * 1024 },
+    { 0x40000000, 128 * 1024 * 1024 }, /* start address is readonly */
+    { 0x48000000,  32 * 1024 * 1024 },
+    { 0x4A000000,  32 * 1024 * 1024 },
 };
 
 static const AspeedSegments aspeed_segments_ast2500_spi1[] = {
