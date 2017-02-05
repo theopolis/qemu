@@ -81,11 +81,11 @@ static void aspeed_wdt_reload(AspeedWDTState *s, bool pclk)
         reload = muldiv64(s->regs[WDT_RELOAD_VALUE], NANOSECONDS_PER_SECOND,
                           s->pclk_freq);
     } else {
-        reload = s->regs[WDT_RELOAD_VALUE] * 1000;
+        reload = (s->regs[WDT_RELOAD_VALUE] / 1000000) * 1000;
     }
 
     if (aspeed_wdt_is_enabled(s)) {
-        timer_mod(s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + reload);
+        timer_mod(s->timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) + reload);
     }
 }
 
@@ -189,7 +189,7 @@ static void aspeed_wdt_realize(DeviceState *dev, Error **errp)
     Object *obj;
     Error *err = NULL;
 
-    s->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, aspeed_wdt_timer_expired, dev);
+    s->timer = timer_new_ms(QEMU_CLOCK_VIRTUAL, aspeed_wdt_timer_expired, dev);
 
     obj = object_property_get_link(OBJECT(dev), "scu", &err);
     if (!obj) {
