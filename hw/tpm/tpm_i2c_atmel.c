@@ -198,7 +198,7 @@ static inline uint32_t tpm_i2c_atmel_data_read(TPMState *s)
     return ret;
 }
 
-static void tpm_i2c_atmel_event(I2CSlave *i2c, enum i2c_event event)
+static int tpm_i2c_atmel_event(I2CSlave *i2c, enum i2c_event event)
 {
     TPMState *s = TPM(&(i2c->qdev));
     i2c->busy = 0;
@@ -216,6 +216,8 @@ static void tpm_i2c_atmel_event(I2CSlave *i2c, enum i2c_event event)
     default:
         break;
     }
+
+    return 0;
 }
 
 static int tpm_i2c_atmel_recv(I2CSlave *i2c)
