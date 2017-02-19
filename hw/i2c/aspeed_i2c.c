@@ -203,7 +203,12 @@ static void aspeed_i2c_bus_handle_cmd(AspeedI2CBus *bus, uint64_t value)
 
     if (bus->cmd & (I2CD_M_STOP_CMD | I2CD_M_S_RX_CMD_LAST)) {
         if (!i2c_bus_busy(bus->bus)) {
-            bus->intr_status |= I2CD_INTR_ABNORMAL;
+            /* Allow M_STOP to be sent on a non-busy bus */
+            if (bus->cmd & I2CD_M_S_RX_CMD_LAST) {
+                bus->intr_status |= I2CD_INTR_ABNORMAL;
+            } else {
+                bus->intr_status |= I2CD_INTR_NORMAL_STOP;
+            }
         } else {
             i2c_end_transfer(bus->bus);
             bus->intr_status |= I2CD_INTR_NORMAL_STOP;

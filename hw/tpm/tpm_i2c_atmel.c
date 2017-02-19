@@ -128,6 +128,7 @@ static inline uint32_t tpm_i2c_atmel_tpm_start_recv(TPMState *s)
 static inline void tpm_i2c_atmel_tpm_start_send(TPMState *s)
 {
     TPMTISEmuState *tis = &s->s.tis;
+    tis->offset = 0;
     tis->loc[0].r_offset = 0;
     tis->loc[0].w_offset = 0;
 }
@@ -184,12 +185,14 @@ static inline uint32_t tpm_i2c_atmel_data_read(TPMState *s)
         len = tpm_i2c_atmel_get_size_from_buffer(&tis->loc[0].r_buffer);
 
         ret = tis->loc[0].r_buffer.buffer[tis->loc[0].r_offset++];
+        DPRINTF("tpm_i2c_atmel: tpm_i2c_atmel_data_read byte 0x%02x   [%d/%d]\n",
+                ret, tis->loc[0].r_offset - 1, len - 1);
         if (tis->loc[0].r_offset >= len) {
             /* got last byte */
             tpm_i2c_atmel_sts_set(&tis->loc[0], TPM_TIS_STS_VALID);
         }
-        DPRINTF("tpm_i2c_atmel: tpm_i2c_atmel_data_read byte 0x%02x   [%d]\n",
-                ret, tis->loc[0].r_offset - 1);
+
+
     } else {
         DPRINTF("tpm_i2c_atmel: !TPM_TIS_STS_DATA_AVAILABLE [%d]\n",
                 tis->loc[0].sts);
@@ -230,7 +233,11 @@ static int tpm_i2c_atmel_send(I2CSlave *i2c, uint8_t data)
 {
     TPMState *s = TPM(&(i2c->qdev));
     TPMTISEmuState *tis = &s->s.tis;
-    tis->loc[0].w_buffer.buffer[tis->loc[0].w_offset++] = data;
+    if (tis->offset == 0) {
+      tis->offset = 1;
+    } else {
+      tis->loc[0].w_buffer.buffer[tis->loc[0].w_offset++] = data;
+    }
     return 0;
 }
 

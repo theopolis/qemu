@@ -22,6 +22,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>
  */
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qemu/error-report.h"
@@ -78,6 +81,17 @@ typedef struct TPMPassthruState TPMPassthruState;
 #define TPM_PASSTHROUGH_DEFAULT_DEVICE "/dev/tpm0"
 
 /* functions */
+
+static int tpm_socket_open(TPMPassthruState *tpm_pt) {
+    struct sockaddr_un addr;
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, tpm_pt->tpm_dev, sizeof(addr.sun_path));
+
+    tpm_pt->tpm_fd = socket(PF_UNIX, SOCK_STREAM, 0);
+    connect(tpm_pt->tpm_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un));
+
+    return 0;
+}
 
 static void tpm_passthrough_cancel_cmd(TPMBackend *tb);
 
@@ -163,6 +177,7 @@ static int tpm_passthrough_unix_tx_bufs(TPMPassthruState *tpm_pt,
 
     is_selftest = tpm_passthrough_is_selftest(in, in_len);
 
+    tpm_socket_open(tpm_pt);
     ret = tpm_passthrough_unix_write(tpm_pt->tpm_fd, in, in_len);
     if (ret != in_len) {
         if (!tpm_pt->tpm_op_canceled || errno != ECANCELED) {
@@ -193,6 +208,8 @@ static int tpm_passthrough_unix_tx_bufs(TPMPassthruState *tpm_pt,
         hdr = (struct tpm_resp_hdr *)out;
         *selftest_done = (be32_to_cpu(hdr->errcode) == 0);
     }
+
+    qemu_close(tpm_pt->tpm_fd);
 
 err_exit:
     if (ret < 0) {
@@ -236,9 +253,10 @@ static void tpm_passthrough_worker_thread(gpointer data,
                                       thr_parms->tpm_state->locty_number,
                                       selftest_done);
         break;
+    case TPM_BACKEND_CMD_TPM_RESET:
+        break;
     case TPM_BACKEND_CMD_INIT:
     case TPM_BACKEND_CMD_END:
-    case TPM_BACKEND_CMD_TPM_RESET:
         /* nothing to do */
         break;
     }
@@ -265,6 +283,15 @@ static int tpm_passthrough_startup_tpm(TPMBackend *tb)
 static void tpm_passthrough_reset(TPMBackend *tb)
 {
     TPMPassthruState *tpm_pt = TPM_PASSTHROUGH(tb);
+
+    tpm_socket_open(tpm_pt);
+    uint8_t hw_reset[10];
+    memset(hw_reset, 0, 10);
+    hw_reset[1] = 0xc1;
+    hw_reset[5] = 0x0a;
+    hw_reset[9] = 255;
+    tpm_passthrough_unix_write(tpm_pt->tpm_fd, hw_reset, 10);
+    qemu_close(tpm_pt->tpm_fd);
 
     DPRINTF("tpm_passthrough: CALL TO TPM_RESET!\n");
 
@@ -408,6 +435,7 @@ static int tpm_passthrough_open_sysfs_cancel(TPMBackend *tb)
 
 static int tpm_passthrough_handle_device_opts(QemuOpts *opts, TPMBackend *tb)
 {
+
     TPMPassthruState *tpm_pt = TPM_PASSTHROUGH(tb);
     const char *value;
 
@@ -423,7 +451,7 @@ static int tpm_passthrough_handle_device_opts(QemuOpts *opts, TPMBackend *tb)
 
     tb->path = g_strdup(tpm_pt->tpm_dev);
 
-    tpm_pt->tpm_fd = qemu_open(tpm_pt->tpm_dev, O_RDWR);
+    tpm_socket_open(tpm_pt);
     if (tpm_pt->tpm_fd < 0) {
         error_report("Cannot access TPM device using '%s': %s",
                      tpm_pt->tpm_dev, strerror(errno));
@@ -435,6 +463,7 @@ static int tpm_passthrough_handle_device_opts(QemuOpts *opts, TPMBackend *tb)
                      tpm_pt->tpm_dev);
         goto err_close_tpmdev;
     }
+    qemu_close(tpm_pt->tpm_fd);
 
     return 0;
 

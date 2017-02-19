@@ -26,7 +26,7 @@
 #define ASPEED_I2C(obj) \
     OBJECT_CHECK(AspeedI2CState, (obj), TYPE_ASPEED_I2C)
 
-#define ASPEED_I2C_NR_BUSSES 14
+#define ASPEED_I2C_NR_BUSSES 7
 
 struct AspeedI2CState;
 
