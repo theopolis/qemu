@@ -31,7 +31,7 @@
 #include "tpm_int.h"
 #include "qapi/error.h"
 
-#define DEBUG_TIS 0
+#define DEBUG_TIS 1
 
 #define DPRINTF(fmt, ...) do { \
     if (DEBUG_TIS) { \
@@ -168,8 +168,6 @@ static void tpm_i2c_atmel_receive_bh(void *opaque)
     tis->loc[0].state = TPM_TIS_STATE_COMPLETION;
     tis->loc[0].r_offset = 0;
     tis->loc[0].w_offset = 0;
-    DPRINTF("tpm_i2c_atmel: tpm_i2c_atmel_receive_bh");
-
 }
 
 /*
