@@ -31,7 +31,7 @@
 #include "tpm_int.h"
 #include "qapi/error.h"
 
-#define DEBUG_TIS 1
+#define DEBUG_TIS 0
 
 #define DPRINTF(fmt, ...) do { \
     if (DEBUG_TIS) { \
