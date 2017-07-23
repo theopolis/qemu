@@ -31,7 +31,7 @@
 #include "tpm_int.h"
 #include "qapi/error.h"
 
-#define DEBUG_TIS 0
+#define DEBUG_TIS 1
 
 #define DPRINTF(fmt, ...) do { \
     if (DEBUG_TIS) { \
@@ -140,6 +140,7 @@ static inline void tpm_i2c_atmel_tpm_send(TPMState *s)
 {
     TPMTISEmuState *tis = &s->s.tis;
 
+    printf("atmel_tpm_send\n");
     if (tis->loc[0].w_offset &&
         tis->loc[0].state != TPM_TIS_STATE_EXECUTION) {
         tpm_i2c_atmel_show_buffer(&tis->loc[0].w_buffer, "tpm_tis: To TPM");
@@ -153,6 +154,7 @@ static inline void tpm_i2c_atmel_tpm_send(TPMState *s)
          */
         tis->loc[0].state = TPM_TIS_STATE_EXECUTION;
 
+        printf("will deliver_request\n");
         tpm_backend_deliver_request(s->be_driver);
     }
 }
@@ -162,6 +164,8 @@ static void tpm_i2c_atmel_receive_bh(void *opaque)
 {
     TPMState *s = opaque;
     TPMTISEmuState *tis = &s->s.tis;
+
+    printf("atmel_receive_bh (clear offset)\n");
 
     tpm_i2c_atmel_sts_set(&tis->loc[0],
                     TPM_TIS_STS_VALID | TPM_TIS_STS_DATA_AVAILABLE);
@@ -183,7 +187,7 @@ static inline uint32_t tpm_i2c_atmel_data_read(TPMState *s)
         len = tpm_i2c_atmel_get_size_from_buffer(&tis->loc[0].r_buffer);
 
         ret = tis->loc[0].r_buffer.buffer[tis->loc[0].r_offset++];
-        DPRINTF("tpm_i2c_atmel: tpm_i2c_atmel_data_read byte 0x%02x   [%d/%d]\n",
+        printf("tpm_i2c_atmel: tpm_i2c_atmel_data_read byte 0x%02x   [%d/%d]\n",
                 ret, tis->loc[0].r_offset - 1, len - 1);
         if (tis->loc[0].r_offset >= len) {
             /* got last byte */
@@ -192,7 +196,7 @@ static inline uint32_t tpm_i2c_atmel_data_read(TPMState *s)
 
 
     } else {
-        DPRINTF("tpm_i2c_atmel: !TPM_TIS_STS_DATA_AVAILABLE [%d]\n",
+        printf("tpm_i2c_atmel: !TPM_TIS_STS_DATA_AVAILABLE [%d]\n",
                 tis->loc[0].sts);
     }
 
@@ -234,6 +238,7 @@ static int tpm_i2c_atmel_send(I2CSlave *i2c, uint8_t data)
     if (tis->offset == 0) {
       tis->offset = 1;
     } else {
+      printf("atmel_send...\n");
       tis->loc[0].w_buffer.buffer[tis->loc[0].w_offset++] = data;
     }
     return 0;
@@ -325,6 +330,7 @@ static void tpm_i2c_atmel_reset(DeviceState *dev)
     }
         tis->loc[0].state = TPM_TIS_STATE_IDLE;
 
+    printf("atmel_reset reallocing\n");
     tpm_backend_realloc_buffer(s->be_driver, &tis->loc[0].w_buffer);
     tpm_backend_realloc_buffer(s->be_driver, &tis->loc[0].r_buffer);
 

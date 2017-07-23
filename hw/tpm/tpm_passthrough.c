@@ -83,7 +83,8 @@ typedef struct TPMPassthruState TPMPassthruState;
 /* functions */
 
 static int tpm_socket_open(TPMPassthruState *tpm_pt) {
-    struct sockaddr_un addr;
+    static struct sockaddr_un addr;
+    bzero((char *)&addr, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, tpm_pt->tpm_dev, sizeof(addr.sun_path));
 
@@ -176,9 +177,19 @@ static int tpm_passthrough_unix_tx_bufs(TPMPassthruState *tpm_pt,
     *selftest_done = false;
 
     is_selftest = tpm_passthrough_is_selftest(in, in_len);
+    int i;
+    for (i = 0; i < 10; i++) {
+        printf("%.2X ", in[i]);
+    }
+    printf("\n");
+    if (in_len == 0) {
+        in_len = be32_to_cpu(*(uint32_t *)&in[2]);
+    }
 
     tpm_socket_open(tpm_pt);
+    printf("opened socket\n");
     ret = tpm_passthrough_unix_write(tpm_pt->tpm_fd, in, in_len);
+    printf("wrote %d/%d bytes\n", ret, in_len);
     if (ret != in_len) {
         if (!tpm_pt->tpm_op_canceled || errno != ECANCELED) {
             error_report("tpm_passthrough: error while transmitting data "
@@ -209,9 +220,9 @@ static int tpm_passthrough_unix_tx_bufs(TPMPassthruState *tpm_pt,
         *selftest_done = (be32_to_cpu(hdr->errcode) == 0);
     }
 
+err_exit:
     qemu_close(tpm_pt->tpm_fd);
 
-err_exit:
     if (ret < 0) {
         tpm_write_fatal_error_response(out, out_len);
     }
@@ -241,7 +252,7 @@ static void tpm_passthrough_worker_thread(gpointer data,
     TPMBackendCmd cmd = (TPMBackendCmd)data;
     bool selftest_done = false;
 
-    DPRINTF("tpm_passthrough: processing command type %d\n", cmd);
+    printf("tpm_passthrough: processing command type %d\n", cmd);
 
     switch (cmd) {
     case TPM_BACKEND_CMD_PROCESS_CMD:
